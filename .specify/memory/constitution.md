@@ -1,0 +1,185 @@
+<!--
+SYNC IMPACT REPORT
+Version change: N/A → 1.0.0
+Modified principles: None (new constitution)
+Added sections: Technology Stack, Development Workflow, Quality Standards, Project Constraints
+Removed sections: None
+Templates requiring updates:
+  ✅ plan-template.md - Constitution check gates will align with new principles
+  ✅ spec-template.md - Requirements section aligns with quality standards
+  ✅ tasks-template.md - Test structure aligns with Test-Driven Development principle
+  ✅ Command files verified - No outdated references found
+Follow-up TODOs: None
+-->
+
+# Todo Full-Stack Web Application (Monorepo) Constitution
+
+## Core Principles
+
+### Spec-Driven Development
+All code changes MUST be preceded by a specification. No manual coding is permitted without first creating a spec.md document. The development hierarchy is immutable: Constitution → Specification → Plan → Tasks → Implementation.
+
+**Rationale**: Ensures clear requirements before writing code, prevents scope creep, and maintains traceability from business goals to implementation.
+
+### Agent Collaboration
+Use specialized subagents for each layer of the application: Frontend Agent for Next.js components and React state, Backend Agent for FastAPI endpoints and business logic, Database Agent for SQLModel schemas and migrations, Auth Agent for Better Auth integration and session management. Each agent MUST only operate within its domain and cross-cut through the /sp.* skills.
+
+**Rationale**: Specialized agents ensure domain expertise and prevent coupling concerns across layers. Clear boundaries maintain architectural integrity.
+
+### Reusable Skills
+Leverage the /sp.* skills for common workflows: specify, plan, tasks, implement, adr, phr, taskstoissues. Skills MUST be the primary mechanism for executing these workflows; do not manually replicate skill logic.
+
+**Rationale**: Ensures consistency across features, reduces repetition, and maintains a single source of truth for processes.
+
+### User Isolation
+Every user MUST see only their own data. All database queries MUST filter by user_id or equivalent tenant identifier. Multi-tenant data isolation is non-negotiable. No user can access, view, or modify another user's data under any circumstance.
+
+**Rationale**: Security and data privacy requirement. Multi-user SaaS architecture demands strict data boundaries to prevent data leakage and unauthorized access.
+
+### Security First
+JWT token verification is required on ALL protected endpoints. Unverified endpoints are a violation. Better Auth handles session management; JWT tokens MUST be used for API authentication. All user input MUST be validated; no implicit trust of client data. Secrets MUST be stored in environment variables, never committed to code.
+
+**Rationale**: Authentication is the security foundation. Without JWT verification on all endpoints, user isolation is compromised and data can be accessed by unauthorized parties.
+
+### Type Safety
+Frontend uses TypeScript; backend uses Pydantic validation. All API contracts MUST be typed. No `any` types in TypeScript unless explicitly justified and documented. All SQLModel models MUST have clear type annotations. Type errors MUST be resolved before merging.
+
+**Rationale**: Prevents runtime errors, improves IDE support, documents interfaces, and catches bugs at compile time rather than in production.
+
+### Clean Architecture
+Clear separation of concerns: presentation layer (UI), business logic layer (API/services), and data layer (models/ORM). No business logic in components; no data access in API routes without service layer. Dependency direction: UI → API → Services → Models. No circular dependencies.
+
+**Rationale**: Maintainable codebase, testable components, ability to swap implementations without ripple effects. Clear boundaries enable parallel development and reduce cognitive load.
+
+### Test-Driven Development
+Tests MUST be written before deployment. Test coverage MUST meet 80%+ threshold. Unit tests for business logic, integration tests for API endpoints, contract tests for critical data flows. Tests MUST run on all PRs; failing tests block merges.
+
+**Rationale**: Prevents regressions, documents expected behavior, enables refactoring confidence. High coverage catches edge cases before they reach production.
+
+## Technology Stack
+
+### Frontend
+- Framework: Next.js 16+ with App Router
+- Language: TypeScript (strict mode)
+- Styling: Tailwind CSS (no inline styles, no CSS-in-JS)
+- Authentication: Better Auth for session management
+
+### Backend
+- Framework: FastAPI (Python)
+- ORM: SQLModel (type-safe SQLAlchemy wrapper)
+- Patterns: Async/await for all I/O operations
+- Validation: Pydantic for request/response validation
+
+### Database
+- Provider: Neon Serverless PostgreSQL
+- Connection: Serverless, auto-scaling
+- Migrations: SQLModel with Alembic
+
+### Architecture
+- Monorepo structure: frontend/ and backend/ directories
+- API: RESTful with JSON responses
+- Authentication: JWT tokens generated by Better Auth, verified by FastAPI
+- Data filtering: User-specific filtering on all queries
+
+## Development Workflow
+
+### Spec-Kit Flow
+1. Constitution defines project principles (this file)
+2. Specify (/sp.specify) defines feature requirements
+3. Plan (/sp.plan) designs architecture and approach
+4. Tasks (/sp.tasks) breaks down implementation
+5. Implement (/sp.implement) executes all tasks
+6. Commit and PR (/sp.git.commit_pr) delivers code
+
+### Agent-Based Execution
+- Frontend Dev Specialist: Next.js components, React state, Tailwind styling
+- Backend API Developer: FastAPI endpoints, business logic, validation
+- Database ORM Specialist: SQLModel schemas, migrations, Neon DB operations
+- Auth Security Specialist: Better Auth integration, JWT verification, session management
+
+### Quality Gates
+- 80%+ code coverage required
+- No hardcoded values (use .env variables)
+- Proper error handling on all endpoints
+- Consistent naming conventions (PascalCase for types, camelCase for JS/TS, snake_case for Python)
+- API documentation for all endpoints
+- Responsive mobile-first UI design
+
+## Quality Standards
+
+### Code Coverage
+- Minimum 80% test coverage across the entire codebase
+- Coverage measured at module level: models, services, API routes, components
+- Exceptions require documented justification
+
+### Code Quality
+- No `any` types in TypeScript without documented rationale
+- No inline styles; use Tailwind CSS classes exclusively
+- No manual SQL queries; use SQLModel ORM methods
+- No console.log in production code; use structured logging
+- Consistent error handling: 4xx for client errors, 5xx for server errors
+
+### Documentation
+- All public API endpoints documented with OpenAPI/Swagger
+- Component props documented with JSDoc/TypeScript comments
+- Environment variables documented in .env.example
+- README includes setup and quickstart instructions
+
+### Performance
+- Async/await patterns for all database and network I/O
+- Connection pooling via SQLAlchemy engine
+- Pagination for list endpoints (max 100 items per page)
+- Optimized queries (no N+1 problems)
+
+## Project Constraints
+
+### Deployment
+- Frontend + Backend deployed to Vercel
+- Neon PostgreSQL for database only
+- No alternative database providers permitted
+
+### Authentication
+- Better Auth for frontend session management
+- JWT tokens for API authentication
+- No alternative auth methods (OAuth, SSO, etc.) permitted without explicit amendment
+
+### Database Access
+- SQLModel ORM only; no raw SQL queries
+- All queries go through SQLAlchemy engine
+- User filtering on all queries (user_id WHERE clause)
+
+### Styling
+- Tailwind CSS only; no inline styles or CSS-in-JS
+- Mobile-first responsive design
+- Consistent design system (colors, spacing, typography)
+
+### Code Organization
+- Monorepo structure with frontend/ and backend/ directories
+- Clear separation: UI components, API routes, services, models
+- No circular dependencies
+- Dependency direction: UI → API → Services → Models
+
+## Governance
+
+### Amendment Process
+- Constitution amendments require documented proposal
+- All dependent templates MUST be updated (plan.md, spec.md, tasks.md, command files)
+- Version MUST increment according to semantic versioning:
+  - MAJOR: Backward-incompatible principle removals or redefinitions
+  - MINOR: New principle or section added or materially expanded
+  - PATCH: Clarifications, wording fixes, non-semantic refinements
+- Update must include Sync Impact Report at top of file
+
+### Compliance Review
+- All PRs/reviews MUST verify compliance with constitution
+- Complexity must be justified in plan.md Complexity Tracking section
+- Use AGENTS.md for runtime development guidance
+- Constitution supersedes all other practices and guidelines
+
+### Enforcement
+- Non-compliant code blocks merges
+- Constitution violations require explicit discussion and amendment
+- ADR suggestions for significant architectural decisions (per AGENTS.md)
+- PHRs required for all user interactions (per AGENTS.md)
+
+**Version**: 1.0.0 | **Ratified**: 2026-01-05 | **Last Amended**: 2026-01-05
