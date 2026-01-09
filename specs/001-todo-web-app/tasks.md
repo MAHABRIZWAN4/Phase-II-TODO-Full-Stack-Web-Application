@@ -83,6 +83,10 @@
 - [x] T024 [US1] Implement login API call in frontend/app/(auth)/login/page.tsx
 - [x] T025 [US1] Add error handling and user feedback for authentication failures
 - [ ] T026 [US1] Test authentication flow end-to-end (signup → login → dashboard access)
+- [x] T026a [US1] Implement root redirect in frontend/app/page.tsx (redirect to /login if unauthenticated, else /dashboard)
+- [ ] T026b [US1] Fix backend async DB session usage (make backend/routes/auth.py and backend/routes/tasks.py compatible with async session from backend/db.py)
+- [ ] T026c [US1] Ensure DB tables exist for local dev (call init_db on startup in backend/main.py)
+- [ ] T026d [US1] Fix bcrypt/passlib compatibility in backend (pin bcrypt<4 so password hashing works)
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently. Users can sign up, log in, and access protected routes.
 

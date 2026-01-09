@@ -2,6 +2,8 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from db import init_db
 from routes.auth import router as auth_router
 from routes.tasks import router as tasks_router
 
@@ -19,6 +21,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Ensure tables exist for local dev
+@app.on_event("startup")
+async def on_startup():
+    await init_db()
+
 
 # Include routers
 app.include_router(auth_router)

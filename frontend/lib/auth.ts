@@ -3,6 +3,7 @@
 // Token storage and management utilities
 export const AUTH_TOKEN_KEY = "auth_token";
 export const AUTH_USER_KEY = "auth_user";
+export const AUTH_COOKIE_NAME = "auth_token"; // For middleware to read server-side
 
 export interface AuthUser {
   id: string;
@@ -38,7 +39,7 @@ export function getAuthToken(): string | null {
 }
 
 /**
- * Set authentication token
+ * Set authentication token (also sets cookie for middleware)
  */
 export function setAuthToken(token: string, expiresIn: number = 604800000): void {
   // Default 7 days in milliseconds
@@ -49,6 +50,9 @@ export function setAuthToken(token: string, expiresIn: number = 604800000): void
     expiresAt: Date.now() + expiresIn,
   };
   localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify(tokenData));
+
+  // Also set cookie for server-side middleware to read
+  document.cookie = `${AUTH_COOKIE_NAME}=${token}; path=/; max-age=${Math.floor(expiresIn / 1000)}; SameSite=Lax`;
 }
 
 /**

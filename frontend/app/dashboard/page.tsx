@@ -2,20 +2,22 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getAuthUser, logout } from "@/lib/auth";
+import { getAuthUser, logout, type AuthUser } from "@/lib/auth";
 import TaskList from "@/components/TaskList";
 import TaskForm from "@/components/TaskForm";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ email: string; name?: string } | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
-    const userData = getAuthUser();
-    setUser(userData);
-    if (!userData) {
-      router.push("/login");
+    // Get user from localStorage on client side only
+    const authUser = getAuthUser();
+    setUser(authUser);
+
+    if (!authUser) {
+      router.replace("/login");
     }
   }, [router]);
 
@@ -32,9 +34,10 @@ export default function DashboardPage() {
     window.location.reload();
   };
 
+  // Show loading while checking auth
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );

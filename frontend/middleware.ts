@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getAuthToken } from "./lib/auth";
 
 // Define protected routes
 const protectedRoutes = ["/dashboard"];
@@ -8,9 +7,20 @@ const protectedRoutes = ["/dashboard"];
 // Define public routes
 const publicRoutes = ["/login", "/signup", "/"];
 
+// Cookie name for auth token
+const AUTH_COOKIE_NAME = "auth_token";
+
+/**
+ * Get auth token from cookies (for server-side middleware)
+ */
+function getTokenFromCookie(request: NextRequest): string | null {
+  const cookie = request.cookies.get(AUTH_COOKIE_NAME);
+  return cookie?.value || null;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = getAuthToken();
+  const token = getTokenFromCookie(request);
 
   // Check if the current route is protected
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));

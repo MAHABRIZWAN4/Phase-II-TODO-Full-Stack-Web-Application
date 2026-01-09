@@ -39,8 +39,8 @@ export default function SignupPage() {
       setAuthToken(data.token);
       setAuthUser(data.user);
 
-      // Redirect to dashboard
-      router.push("/dashboard");
+      // Redirect to dashboard (use window.location for reliable navigation)
+      window.location.href = "/dashboard";
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {

@@ -1,9 +1,10 @@
 """Authentication routes for signup and login."""
 
 import re
+import bcrypt
 from fastapi import APIRouter, HTTPException, status, Depends
-from sqlmodel import Session, select
-from passlib.context import CryptContext
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 from models import User
 from db import get_session
 from jwt_utils import create_access_token
@@ -12,14 +13,16 @@ from typing import Optional
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt has a 72-byte limit for passwords
+MAX_PASSWORD_LENGTH = 72
+
+# Task reference: T026d (Fix bcrypt/passlib compatibility in backend)
 
 
 # Pydantic models for validation
 class UserCreate(BaseModel):
     email: constr(min_length=1, max_length=255)
-    password: constr(min_length=8)
+    password: constr(min_length=8, max_length=MAX_PASSWORD_LENGTH)
     name: Optional[constr(max_length=255)] = None
 
 
@@ -41,13 +44,31 @@ class TokenResponse(BaseModel):
 
 
 def hash_password(password: str) -> str:
-    """Hash a password using bcrypt."""
-    return pwd_context.hash(password)
+    """Hash a password using bcrypt.
+
+    Notes:
+    - bcrypt only uses the first 72 bytes of the password. We enforce this limit
+      to avoid silent truncation.
+
+    Task reference: T026d (Fix bcrypt/passlib compatibility in backend)
+    """
+    pw_bytes = password.encode("utf-8")
+    if len(pw_bytes) > MAX_PASSWORD_LENGTH:
+        raise ValueError(f"Password exceeds maximum length of {MAX_PASSWORD_LENGTH} bytes")
+
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(pw_bytes, salt).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against a hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify a password against a bcrypt hash.
+
+    Task reference: T026d (Fix bcrypt/passlib compatibility in backend)
+    """
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"),
+        hashed_password.encode("utf-8"),
+    )
 
 
 def validate_email(email: str) -> bool:
@@ -57,7 +78,7 @@ def validate_email(email: str) -> bool:
 
 
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def signup(user_data: UserCreate, session: Session = Depends(get_session)):
+async def signup(user_data: UserCreate, session: AsyncSession = Depends(get_session)):
     """Create a new user account."""
     # Validate email
     if not validate_email(user_data.email):
@@ -67,9 +88,9 @@ async def signup(user_data: UserCreate, session: Session = Depends(get_session))
         )
 
     # Check if user already exists
-    existing_user = session.exec(
+    existing_user = (await session.exec(
         select(User).where(User.email == user_data.email)
-    ).first()
+    )).first()
 
     if existing_user:
         raise HTTPException(
@@ -78,7 +99,14 @@ async def signup(user_data: UserCreate, session: Session = Depends(get_session))
         )
 
     # Create new user
-    hashed_password = hash_password(user_data.password)
+    try:
+        hashed_password = hash_password(user_data.password)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
     new_user = User(
         email=user_data.email,
         password_hash=hashed_password,
@@ -86,8 +114,8 @@ async def signup(user_data: UserCreate, session: Session = Depends(get_session))
     )
 
     session.add(new_user)
-    session.commit()
-    session.refresh(new_user)
+    await session.commit()
+    await session.refresh(new_user)
 
     # Generate JWT token
     token = create_access_token(new_user.id, new_user.email)
@@ -104,12 +132,12 @@ async def signup(user_data: UserCreate, session: Session = Depends(get_session))
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(user_data: UserLogin, session: Session = Depends(get_session)):
+async def login(user_data: UserLogin, session: AsyncSession = Depends(get_session)):
     """Login an existing user."""
     # Find user by email
-    user = session.exec(
+    user = (await session.exec(
         select(User).where(User.email == user_data.email)
-    ).first()
+    )).first()
 
     if not user:
         raise HTTPException(

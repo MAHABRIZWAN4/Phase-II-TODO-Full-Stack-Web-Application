@@ -5,7 +5,7 @@ import type { CreateTaskRequest } from "@/lib/types";
 import { createTask } from "@/lib/api";
 
 interface TaskFormProps {
-  onSuccess?: () => void;
+  onSuccess?: (data: CreateTaskRequest) => void;
   initialData?: CreateTaskRequest;
   onCancel?: () => void;
   mode?: "create" | "edit";
@@ -39,7 +39,7 @@ export default function TaskForm({
       }
 
       setFormData({ title: "", description: "" });
-      onSuccess?.();
+      onSuccess?.(formData);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {

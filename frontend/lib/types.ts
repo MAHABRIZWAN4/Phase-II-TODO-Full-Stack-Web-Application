@@ -1,4 +1,4 @@
-"""TypeScript types matching backend Pydantic models."""
+// TypeScript types matching backend Pydantic models.
 
 // User types
 export interface User {

@@ -1,7 +1,8 @@
 """Task CRUD routes for managing user tasks."""
 
 from fastapi import APIRouter, HTTPException, status, Depends
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy import or_
 from models import Task
 from db import get_session
@@ -46,7 +47,7 @@ def validate_task_ownership(task: Task, user_id: str):
 @router.post("", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def create_task(
     task_data: TaskCreate,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     user_id: str = Depends(get_current_user_id)
 ):
     """Create a new task for the authenticated user."""
@@ -58,8 +59,8 @@ async def create_task(
     )
 
     session.add(new_task)
-    session.commit()
-    session.refresh(new_task)
+    await session.commit()
+    await session.refresh(new_task)
 
     return TaskResponse(
         id=new_task.id,
@@ -74,15 +75,15 @@ async def create_task(
 
 @router.get("", response_model=list[TaskResponse])
 async def list_tasks(
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     user_id: str = Depends(get_current_user_id)
 ):
     """Get all tasks for the authenticated user."""
-    tasks = session.exec(
+    tasks = (await session.exec(
         select(Task)
         .where(Task.user_id == user_id)
         .order_by(Task.created_at.desc())
-    ).all()
+    )).all()
 
     return [
         TaskResponse(
@@ -101,11 +102,11 @@ async def list_tasks(
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(
     task_id: int,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     user_id: str = Depends(get_current_user_id)
 ):
     """Get a specific task by ID."""
-    task = session.get(Task, task_id)
+    task = await session.get(Task, task_id)
 
     if not task:
         raise HTTPException(
@@ -130,11 +131,11 @@ async def get_task(
 async def update_task(
     task_id: int,
     task_update: TaskUpdate,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     user_id: str = Depends(get_current_user_id)
 ):
     """Update an existing task."""
-    task = session.get(Task, task_id)
+    task = await session.get(Task, task_id)
 
     if not task:
         raise HTTPException(
@@ -153,8 +154,8 @@ async def update_task(
     task.updated_at = datetime.utcnow()
 
     session.add(task)
-    session.commit()
-    session.refresh(task)
+    await session.commit()
+    await session.refresh(task)
 
     return TaskResponse(
         id=task.id,
@@ -170,11 +171,11 @@ async def update_task(
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(
     task_id: int,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     user_id: str = Depends(get_current_user_id)
 ):
     """Delete a task."""
-    task = session.get(Task, task_id)
+    task = await session.get(Task, task_id)
 
     if not task:
         raise HTTPException(
@@ -185,17 +186,17 @@ async def delete_task(
     validate_task_ownership(task, user_id)
 
     session.delete(task)
-    session.commit()
+    await session.commit()
 
 
 @router.patch("/{task_id}/complete", response_model=TaskResponse)
 async def toggle_complete(
     task_id: int,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     user_id: str = Depends(get_current_user_id)
 ):
     """Toggle task completion status."""
-    task = session.get(Task, task_id)
+    task = await session.get(Task, task_id)
 
     if not task:
         raise HTTPException(
@@ -210,8 +211,8 @@ async def toggle_complete(
     task.updated_at = datetime.utcnow()
 
     session.add(task)
-    session.commit()
-    session.refresh(task)
+    await session.commit()
+    await session.refresh(task)
 
     return TaskResponse(
         id=task.id,

@@ -2,9 +2,11 @@
 
 import os
 from typing import AsyncGenerator
-from sqlmodel import SQLModel, create_engine, Session
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
 from dotenv import load_dotenv
+from sqlmodel import SQLModel, Session, create_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 # Load environment variables
 load_dotenv()
@@ -13,8 +15,18 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set")
 
-# Convert synchronous URL to async for PostgreSQL
+# Convert synchronous URL to async for PostgreSQL.
+# NOTE: asyncpg does not accept libpq-style query params like `sslmode`.
+# Neon requires SSL, so we drop those params and enable SSL via connect_args.
 ASYNC_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+
+# Strip libpq params that break asyncpg
+ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.replace("?sslmode=require&channel_binding=require", "")
+ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.replace("&sslmode=require&channel_binding=require", "")
+ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.replace("?sslmode=require", "")
+ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.replace("&sslmode=require", "")
+ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.replace("?channel_binding=require", "")
+ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.replace("&channel_binding=require", "")
 
 # Create async engine with connection pooling
 async_engine = create_async_engine(
@@ -23,6 +35,7 @@ async_engine = create_async_engine(
     pool_pre_ping=True,  # Verify connections before using
     pool_size=10,
     max_overflow=20,
+    connect_args={"ssl": True},
 )
 
 # Create async session factory
