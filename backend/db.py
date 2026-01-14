@@ -28,14 +28,19 @@ ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.replace("&sslmode=require", "")
 ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.replace("?channel_binding=require", "")
 ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.replace("&channel_binding=require", "")
 
-# Create async engine with connection pooling
+# Create async engine with connection pooling optimized for serverless
 async_engine = create_async_engine(
     ASYNC_DATABASE_URL,
     echo=False,
     pool_pre_ping=True,  # Verify connections before using
-    pool_size=10,
-    max_overflow=20,
-    connect_args={"ssl": True},
+    pool_size=1,  # Serverless functions are short-lived, use minimal pool
+    max_overflow=0,  # No overflow for serverless
+    pool_recycle=300,  # Recycle connections after 5 minutes
+    connect_args={
+        "ssl": True,
+        "server_settings": {"jit": "off"},  # Disable JIT for faster cold starts
+        "command_timeout": 10,  # 10 second timeout for commands
+    },
 )
 
 # Create async session factory
